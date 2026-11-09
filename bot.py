@@ -702,7 +702,7 @@ async def adm_unban_step(update: Update, context: ContextTypes.DEFAULT_TYPE):
         c.execute("UPDATE users SET is_banned=0 WHERE user_id=?", (target,))
         conn.commit()
         conn.close()
-                await update.message.reply_text(f"✅ ইউজার `{target}` আনব্যান হয়েছে।", parse_mode="Markdown")
+        await update.message.reply_text(f"✅ ইউজার `{target}` আনব্যান হয়েছে।", parse_mode="Markdown")
     except ValueError:
         await update.message.reply_text("সঠিক আইডি দিন।")
     return ConversationHandler.END
