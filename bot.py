@@ -15,7 +15,7 @@ DEFAULT_GROUP = "https://t.me/TaskCashBDGroup"
     ADMIN_BALANCE_ID, ADMIN_BALANCE_AMOUNT, ADMIN_CHANGE_BTN_NAME, 
     ADMIN_SET_BTN_DATA, ADMIN_BAN_USER, ADMIN_UNBAN_USER, 
     ADMIN_SET_MIN_WD, ADMIN_SET_REF_REWARD, ADMIN_ADD_SUBBTN_LABEL, ADMIN_ADD_SUBBTN_VAL
-) = range(17)
+) = range(18)
 
 def init_db():
     conn = sqlite3.connect("earning_bot.db")
