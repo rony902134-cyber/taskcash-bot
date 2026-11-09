@@ -1,3 +1,5 @@
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 import sqlite3
 from telegram import (
     Update,
@@ -15,6 +17,17 @@ from telegram.ext import (
     ContextTypes,
     filters
 )
+
+# Render ফ্রি ওয়েব সার্ভিসের জন্য ডামি পোর্ট
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+
+def run_dummy_server():
+    server = HTTPServer(('0.0.0.0', 10000), HealthHandler)
+    server.serve_forever()
 
 BOT_TOKEN = "9047569413:AAEZNVFkuNYW_NnBVnNDlYaF-A38tIkKcPc"
 ADMIN_ID = 7103959220
@@ -113,7 +126,6 @@ def get_main_keyboard():
         [KeyboardButton("👥 রেফার"), KeyboardButton("💳 টাকা উত্তোলন")],
         [KeyboardButton("🆔 ইউজার আইডি / ব্যাজ"), KeyboardButton("🆘 সাহায্য ও সাপোর্ট")]
     ]
-    # ডাটাবেস থেকে ডাইনামিক বাটন যোগ করা
     conn = sqlite3.connect("earning_bot.db")
     c = conn.cursor()
     c.execute("SELECT btn_name FROM custom_buttons")
@@ -159,7 +171,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
         f"স্বাগতম {user.first_name}! 👋\n\n"
         f"টাস্ক ক্যাশ বটে আপনি টাস্ক পূরণ ও রেফার করে আয় করতে পারবেন।\n"
-        f"নিচের বাটনগুলো ব্যবহার করে আপনার কাজ শুরু করুন।"
+        f"নিচের বাটনগুলো ব্যবহার করে কাজ শুরু করুন।"
     )
     await update.message.reply_text(welcome_text, reply_markup=get_main_keyboard())
 
@@ -217,13 +229,11 @@ async def refer_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_support(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         f"🆘 **সাহায্য ও সাপোর্ট:**\n\n"
-        f"যেকোনো প্রয়োজনে সরাসরি অ্যাডমিনের সাথে যোগাযোগ করুন:\n"
+        f"যেকোনো প্রয়োজনে সরাসরি যোগাযোগ করুন:\n"
         f"👉 অ্যাডমিন: @{ADMIN_USERNAME}\n"
-        f"👉 অফিশিয়াল গ্রুপ: [Task Cash Group]({DEFAULT_GROUP})"
     )
-    await update.message.reply_text(text, parse_mode="Markdown", disable_web_page_preview=True)
+    await update.message.reply_text(text, parse_mode="Markdown")
 
-# কাস্টম বাটনের মেসেজ হ্যান্ডলার
 async def handle_custom_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     conn = sqlite3.connect("earning_bot.db")
@@ -233,9 +243,8 @@ async def handle_custom_button(update: Update, context: ContextTypes.DEFAULT_TYP
     conn.close()
 
     if res:
-        await update.message.reply_text(res[0], parse_mode="Markdown", disable_web_page_preview=True)
-# টাস্ক ফ্লো
-async def show_task_categories(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text(res[0], parse_mode="Markdown")
+    async def show_task_categories(update: Update, context: ContextTypes.DEFAULT_TYPE):
     u = get_user(update.effective_user.id)
     if not u or u[6] == 1:
         return
@@ -330,7 +339,6 @@ async def handle_task_proof(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ আপনার প্রুফ অ্যাডমিন গ্রুপে পাঠানো হয়েছে! অনুমোদন দিলে ব্যালেন্স যোগ হবে।", reply_markup=get_main_keyboard())
     return ConversationHandler.END
 
-# উইথড্র ফ্লো
 async def start_withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
     u = get_user(update.effective_user.id)
     if not u or u[6] == 1:
@@ -422,7 +430,6 @@ async def get_withdraw_amount(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     return ConversationHandler.END
 
-# গ্রুপ কনফার্মেশন হ্যান্ডলার
 async def group_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
@@ -494,7 +501,6 @@ async def group_button_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         except Exception:
             pass
 
-# অ্যাডমিন প্যানেল কিবোর্ড
 def get_admin_panel_keyboard():
     keyboard = [
         [InlineKeyboardButton("➕ ব্যালেন্স যোগ", callback_data="adm_addbal"), InlineKeyboardButton("➖ ব্যালেন্স কাট", callback_data="adm_cutbal")],
@@ -585,7 +591,6 @@ async def adm_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("সকল মেম্বারদের কাছে পাঠানোর জন্য নোটিশ লিখুন:")
         return ADM_BROADCAST_MSG
 
-# কাস্টম বাটন যোগ ও এডিট স্টেপস
 async def adm_new_btn_name_step(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['custom_btn_name'] = update.message.text.strip()
     await update.message.reply_text("ইউজার এই বাটনে চাপ দিলে কী টেক্সট/নোটিশ দেখবে তা লিখে পাঠান:")
@@ -632,7 +637,6 @@ async def adm_edit_btn_content_step(update: Update, context: ContextTypes.DEFAUL
     await update.message.reply_text(f"✅ বাটন এবং ভেতরের তথ্য সফলভাবে আপডেট হয়েছে!", reply_markup=get_main_keyboard())
     return ConversationHandler.END
 
-# অন্যান্য অ্যাডমিন স্টেপস
 async def adm_add_user_step(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         context.user_data['target_uid'] = int(update.message.text.strip())
@@ -696,7 +700,7 @@ async def adm_unban_step(update: Update, context: ContextTypes.DEFAULT_TYPE):
         c.execute("UPDATE users SET is_banned=0 WHERE user_id=?", (target,))
         conn.commit()
         conn.close()
-        await update.message.reply_text(f"✅ ইউজার `{target}` আনব্যান হয়েছে।", parse_mode="Markdown")
+                await update.message.reply_text(f"✅ ইউজার `{target}` আনব্যান হয়েছে।", parse_mode="Markdown")
     except ValueError:
         await update.message.reply_text("সঠিক আইডি দিন।")
     return ConversationHandler.END
@@ -763,9 +767,10 @@ async def adm_broadcast_step(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("বাতিল করা হয়েছে।", reply_markup=get_main_keyboard())
     return ConversationHandler.END
-
 def main():
+    threading.Thread(target=run_dummy_server, daemon=True).start()
     init_db()
+    
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -831,7 +836,7 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_custom_button))
 
     print("Task Cash BD Bot চালু হয়েছে...")
-    app.run_polling()
+    app.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
     main()
