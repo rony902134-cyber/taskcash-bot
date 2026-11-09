@@ -242,7 +242,7 @@ async def handle_custom_button(update: Update, context: ContextTypes.DEFAULT_TYP
     res = c.fetchone()
     conn.close()
 
-        if res:
+    if res:
         await update.message.reply_text(res[0], parse_mode="Markdown")
 
 async def show_task_categories(update: Update, context: ContextTypes.DEFAULT_TYPE):
