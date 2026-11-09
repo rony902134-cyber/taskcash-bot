@@ -242,9 +242,10 @@ async def handle_custom_button(update: Update, context: ContextTypes.DEFAULT_TYP
     res = c.fetchone()
     conn.close()
 
-    if res:
+        if res:
         await update.message.reply_text(res[0], parse_mode="Markdown")
-    async def show_task_categories(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def show_task_categories(update: Update, context: ContextTypes.DEFAULT_TYPE):
     u = get_user(update.effective_user.id)
     if not u or u[6] == 1:
         return
@@ -258,6 +259,7 @@ async def handle_custom_button(update: Update, context: ContextTypes.DEFAULT_TYP
 async def handle_task_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+
     cat = query.data.split("_")[1]
 
     conn = sqlite3.connect("earning_bot.db")
