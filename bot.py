@@ -32,7 +32,7 @@ def run_dummy_server():
 BOT_TOKEN = "9047569413:AAEZNVFkuNYW_NnBVnNDlYaF-A38tIkKcPc"
 ADMIN_ID = 7103959220
 ADMIN_GROUP_ID = -1004196202579
-ADMIN_USERNAME = "Sabibro71"
+ADMIN_USERNAME = "taskcashbdadmin2110"
 
 # Conversation States
 (
@@ -57,6 +57,7 @@ ADMIN_USERNAME = "Sabibro71"
     ADM_EDIT_BTN_NEW_NAME,
     ADM_EDIT_BTN_NEW_CONTENT
 ) = range(20)
+ADM_SET_MIN_WD, ADM_REJECT_REASON = range(200, 202)
 
 def init_db():
     conn = sqlite3.connect("earning_bot.db")
@@ -87,7 +88,8 @@ def init_db():
     )''')
     c.execute("INSERT OR IGNORE INTO settings VALUES ('min_withdraw', '50')")
     c.execute("INSERT OR IGNORE INTO settings VALUES ('ref_reward', '5')")
-    
+    c.execute("INSERT OR IGNORE INTO settings VALUES ('min_withdraw', '50')")
+
     c.execute("SELECT COUNT(*) FROM tasks")
     if c.fetchone()[0] == 0:
         c.execute("INSERT INTO tasks (category, title, reward) VALUES ('youtube', 'ইউটিউব চ্যানেল সাবস্ক্রাইব করে স্ক্রিনশট দিন', 2.0)")
@@ -230,7 +232,7 @@ async def help_support(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         f"🆘 **সাহায্য ও সাপোর্ট:**\n\n"
         f"যেকোনো প্রয়োজনে সরাসরি যোগাযোগ করুন:\n"
-        f"👉 অ্যাডমিন: @{ADMIN_USERNAME}\n"
+        f"👉 অ্যাডমিন: @{taskcashbdadmin2110} m\n"
     )
     await update.message.reply_text(text, parse_mode="Markdown")
 
@@ -505,12 +507,19 @@ async def group_button_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
 def get_admin_panel_keyboard():
     keyboard = [
-        [InlineKeyboardButton("➕ ব্যালেন্স যোগ", callback_data="adm_addbal"), InlineKeyboardButton("➖ ব্যালেন্স কাট", callback_data="adm_cutbal")],
-        [InlineKeyboardButton("🚫 ইউজার ব্যান", callback_data="adm_ban"), InlineKeyboardButton("✅ ইউজার আনব্যান", callback_data="adm_unban")],
-        [InlineKeyboardButton("🆕 নতুন টাস্ক যোগ", callback_data="adm_addtask"), InlineKeyboardButton("🗑 টাস্ক ডিলিট", callback_data="adm_deltask")],
-        [InlineKeyboardButton("🔘 নতুন বাটন তৈরি", callback_data="adm_addbtn"), InlineKeyboardButton("✏️ বাটন ও কাজ এডিট", callback_data="adm_editbtn")],
+        [InlineKeyboardButton("👥 ইউজার তালিকা", callback_data="adm_user_list"),
+         InlineKeyboardButton("💳 উইথড্র লিমিট", callback_data="adm_change_min_wd")],
+        [InlineKeyboardButton("➕ ব্যালেন্স যোগ", callback_data="adm_add_bal"),
+         InlineKeyboardButton("➖ ব্যালেন্স কর্তন", callback_data="adm_cut_bal")],
+        [InlineKeyboardButton("🚫 ইউজার ব্যান", callback_data="adm_ban"),
+         InlineKeyboardButton("✅ ইউজার আনব্যান", callback_data="adm_unban")],
+        [InlineKeyboardButton("🆕 নতুন টাস্ক যোগ", callback_data="adm_new_task"),
+         InlineKeyboardButton("🗑️ টাস্ক ডিলিট", callback_data="adm_del_task")],
+        [InlineKeyboardButton("🔘 নতুন বাটন তৈরি", callback_data="adm_new_btn"),
+         InlineKeyboardButton("✏️ বাটন ও কাজ এডিট", callback_data="adm_edit_btn")],
         [InlineKeyboardButton("📢 ব্রডকাস্ট নোটিশ", callback_data="adm_broadcast")]
-    ]
+        ]
+    
     return InlineKeyboardMarkup(keyboard)
 
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -765,7 +774,112 @@ async def adm_broadcast_step(update: Update, context: ContextTypes.DEFAULT_TYPE)
             pass
     await update.message.reply_text(f"✅ মোট {count} জন ইউজারের কাছে নোটিশ পাঠানো হয়েছে।")
     return ConversationHandler.END
+# --- ১. ইউজার তালিকা দেখার ফাংশন ---
+async def adm_user_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
 
+    conn = sqlite3.connect("earning_bot.db")
+    c = conn.cursor()
+    c.execute("SELECT user_id, balance, completed_tasks, is_banned FROM users ORDER BY balance DESC LIMIT 50")
+    users = c.fetchall()
+    c.execute("SELECT COUNT(*) FROM users")
+    total_users = c.fetchone()[0]
+    conn.close()
+
+    if not users:
+        await query.message.reply_text("⚠️ ডেটাবেসে কোনো ইউজার পাওয়া যায়নি।")
+        return
+
+    msg = f"📊 **মোট নিবন্ধিত ইউজার:** `{total_users}` জন\n\n"
+    msg += "─── শীর্ষ ৫০ ইউজারের তথ্য ───\n"
+    for u in users:
+        status = "🔴 ব্যান" if u[3] == 1 else "🟢 সচল"
+        msg += f"👤 আইডি: `{u[0]}` | ব্যালেন্স: `৳{u[1]:.2f}` | স্ট্যাটাস: {status}\n"
+
+    await query.message.reply_text(msg, parse_mode="Markdown")
+
+# --- ২. উইথড্র লিমিট পরিবর্তনের ফাংশন ---
+async def adm_change_min_wd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    conn = sqlite3.connect("earning_bot.db")
+    c = conn.cursor()
+    c.execute("SELECT value FROM settings WHERE key='min_withdraw'")
+    row = c.fetchone()
+    current_limit = row[0] if row else "50"
+    conn.close()
+
+    await query.message.reply_text(
+        f"💳 বর্তমান নূন্যতম উইথড্র লিমিট: `{current_limit}` টাকা।\n\n"
+        "নতুন লিমিট কত টাকা করতে চান? সংখ্যাটি লিখে পাঠান (বাতিল করতে /cancel লিখুন):",
+        parse_mode="Markdown"
+    )
+    return ADM_SET_MIN_WD
+
+async def adm_set_min_wd_step(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    try:
+        new_limit = float(text)
+        if new_limit <= 0:
+            raise ValueError
+    except ValueError:
+        await update.message.reply_text("❌ দয়া করে একটি সঠিক ধনাত্মক সংখ্যা লিখুন:")
+        return ADM_SET_MIN_WD
+
+    conn = sqlite3.connect("earning_bot.db")
+    c = conn.cursor()
+    c.execute("INSERT OR REPLACE INTO settings VALUES ('min_withdraw', ?)", (str(new_limit),))
+    conn.commit()
+    conn.close()
+
+    await update.message.reply_text(f"✅ নূন্যতম উইথড্র লিমিট সফলভাবে পরিবর্তন করে `৳{new_limit:.2f}` নির্ধারণ করা হয়েছে।", parse_mode="Markdown")
+    return ConversationHandler.END
+
+# --- ৩. কারণসহ টাস্ক রিজেক্ট করার ফাংশন ---
+async def handle_task_reject_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    parts = query.data.split("_")
+    sub_id = parts[2]
+    target_user_id = parts[3]
+
+    context.user_data['reject_sub_id'] = sub_id
+    context.user_data['reject_target_user'] = target_user_id
+
+    await query.message.reply_text(
+        f"✍️ ইউজার `{target_user_id}`-এর টাস্ক রিজেক্ট করার কারণ লিখে পাঠান:\n(যেমন: ভুয়া স্ক্রিনশট বা শর্ত পূরণ করেননি)",
+        parse_mode="Markdown"
+    )
+    return ADM_REJECT_REASON
+
+async def handle_task_reject_reason_step(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    reason = update.message.text.strip()
+    target_user_id = context.user_data.get('reject_target_user')
+    sub_id = context.user_data.get('reject_sub_id')
+
+    conn = sqlite3.connect("earning_bot.db")
+    c = conn.cursor()
+    c.execute("UPDATE task_submissions SET status='rejected' WHERE sub_id=?", (sub_id,))
+    conn.commit()
+    conn.close()
+
+    user_msg = (
+        "❌ **আপনার জমা দেওয়া টাস্কটি বাতিল করা হয়েছে!**\n\n"
+        f"📝 **বাতিল করার কারণ:** {reason}\n\n"
+        "⚠️ অনুগ্রহ করে সঠিক নিয়ম মেনে আবার কাজটি সম্পন্ন করুন।"
+    )
+    try:
+        await context.bot.send_message(chat_id=target_user_id, text=user_msg, parse_mode="Markdown")
+        await update.message.reply_text("✅ ইউজারকে সফলভাবে কারণ জানিয়ে নোটিশ পাঠানো হয়েছে।")
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ মেসেজ পাঠানো যায়নি: {e}")
+
+    context.user_data.clear()
+    return ConversationHandler.END
+    
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("বাতিল করা হয়েছে।", reply_markup=get_main_keyboard())
     return ConversationHandler.END
@@ -825,6 +939,23 @@ def main():
     app.add_handler(admin_conv)
     app.add_handler(withdraw_conv)
     app.add_handler(task_conv)
+    app.add_handler(CallbackQueryHandler(adm_user_list, pattern="^adm_user_list$"))
+
+    app.add_handler(ConversationHandler(
+        entry_points=[CallbackQueryHandler(adm_change_min_wd_start, pattern="^adm_change_min_wd$")],
+        states={
+            ADM_SET_MIN_WD: [MessageHandler(filters.TEXT & ~filters.COMMAND, adm_set_min_wd_step)]
+        },
+        fallbacks=[CommandHandler("cancel", cancel)]
+    ))
+
+    app.add_handler(ConversationHandler(
+        entry_points=[CallbackQueryHandler(handle_task_reject_click, pattern="^reject_sub_")],
+        states={
+            ADM_REJECT_REASON: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_task_reject_reason_step)]
+        },
+        fallbacks=[CommandHandler("cancel", cancel)]
+    ))
 
     app.add_handler(CallbackQueryHandler(group_button_handler, pattern="^(apptask_|rejtask_|appwd_|rejwd_)"))
     app.add_handler(CallbackQueryHandler(handle_task_category, pattern="^tasks_"))
