@@ -891,7 +891,24 @@ def main():
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("admin", admin_panel))
+    app.add_handler(CallbackQueryHandler(adm_user_list, pattern="^adm_user_list$"))
 
+    app.add_handler(ConversationHandler(
+        entry_points=[CallbackQueryHandler(adm_change_min_wd_start, pattern="^adm_change_min_wd$")],
+        states={
+            ADM_SET_MIN_WD: [MessageHandler(filters.TEXT & ~filters.COMMAND, adm_set_min_wd_step)]
+        },
+        fallbacks=[CommandHandler("cancel", cancel)]
+    ))
+
+    app.add_handler(ConversationHandler(
+        entry_points=[CallbackQueryHandler(handle_task_reject_click, pattern="^reject_sub_")],
+        states={
+            ADM_REJECT_REASON: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_task_reject_reason_step)]
+        },
+        fallbacks=[CommandHandler("cancel", cancel)]
+    ))
+    
     admin_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(adm_menu_callback, pattern="^adm_")],
         states={
@@ -939,23 +956,7 @@ def main():
     app.add_handler(admin_conv)
     app.add_handler(withdraw_conv)
     app.add_handler(task_conv)
-    app.add_handler(CallbackQueryHandler(adm_user_list, pattern="^adm_user_list$"))
-
-    app.add_handler(ConversationHandler(
-        entry_points=[CallbackQueryHandler(adm_change_min_wd_start, pattern="^adm_change_min_wd$")],
-        states={
-            ADM_SET_MIN_WD: [MessageHandler(filters.TEXT & ~filters.COMMAND, adm_set_min_wd_step)]
-        },
-        fallbacks=[CommandHandler("cancel", cancel)]
-    ))
-
-    app.add_handler(ConversationHandler(
-        entry_points=[CallbackQueryHandler(handle_task_reject_click, pattern="^reject_sub_")],
-        states={
-            ADM_REJECT_REASON: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_task_reject_reason_step)]
-        },
-        fallbacks=[CommandHandler("cancel", cancel)]
-    ))
+   
 
     app.add_handler(CallbackQueryHandler(group_button_handler, pattern="^(apptask_|rejtask_|appwd_|rejwd_)"))
     app.add_handler(CallbackQueryHandler(handle_task_category, pattern="^tasks_"))
